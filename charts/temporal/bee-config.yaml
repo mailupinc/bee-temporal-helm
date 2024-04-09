@@ -48,7 +48,7 @@ server:
   replicaCount: 2
 
   image:
-    tag: "{{ .Chart.appVersion  }}"
+    tag: 1.23.0
 
 cassandra:
   enabled: false
@@ -96,4 +96,4 @@ web:
 
 admintools:
   image:
-    tag: "{{ .Chart.appVersion  }}"
+    tag: 1.23.0
