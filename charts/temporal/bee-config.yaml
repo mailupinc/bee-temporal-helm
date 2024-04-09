@@ -47,6 +47,9 @@ server:
 
   replicaCount: 2
 
+  image:
+    tag: "{{ .Chart.appVersion  }}"
+
 cassandra:
   enabled: false
 
@@ -90,3 +93,7 @@ web:
   additionalEnv:
     - name: TEMPORAL_CSRF_COOKIE_INSECURE
       value: 'true'
+
+admintools:
+  image:
+    tag: "{{ .Chart.appVersion  }}"
