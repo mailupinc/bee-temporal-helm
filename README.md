@@ -14,11 +14,10 @@ This Helm Chart code is tested by a dedicated test pipeline. It is also used ext
 ## Prerequisites
 
 This sequence assumes
-* that your system is configured to access a kubernetes cluster (e. g. [AWS EKS](https://aws.amazon.com/eks/), [kind](https://kind.sigs.k8s.io/), or [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)), and
-* that your machine has
-  - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/), and
+* that your system is configured to access a kubernetes cluster (e. g. [AWS EKS](https://aws.amazon.com/eks/), [kind](https://kind.sigs.k8s.io/), or [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/))
+* that your machine has the following installed and able to access your cluster:
+  - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
   - [Helm v3](https://helm.sh)
-  installed and able to access your cluster.
 
 This repo only contains one chart currently, but is structured in the standard helm repo way. This means you will find the chart in the `charts/temporal` directory. All example `helm` commands below should be run from that directory.
 
@@ -35,7 +34,7 @@ helm dependencies update
 Temporal can be configured to run with various dependencies. The default "Batteries Included" Helm Chart configuration deploys and configures the following components:
 
 * Cassandra
-* ElasticSearch
+* Elasticsearch
 * Prometheus
 * Grafana
 
@@ -43,19 +42,21 @@ The sections that follow describe various deployment configurations, from a mini
 
 ### Minimal installation with required dependencies only
 
-To install Temporal in a limited but working and self-contained configuration (one replica of Cassandra and each of Temporal's services, no metrics or ElasticSearch), you can run the following command
+To install Temporal in a limited but working and self-contained configuration (one replica of Cassandra, Elasticsearch and each of Temporal's services, no metrics), you can run the following command
 
 ```bash
 helm install \
     --set server.replicaCount=1 \
     --set cassandra.config.cluster_size=1 \
+    --set elasticsearch.replicas=1 \
     --set prometheus.enabled=false \
     --set grafana.enabled=false \
-    --set elasticsearch.enabled=false \
     temporaltest . --timeout 15m
 ```
 
 This configuration consumes limited resources and it is useful for small scale tests (such as using minikube).
+
+Note: It used to be possible to install Temporal with just Cassandra. Since Temporal 1.21, this is no longer supported. Cassandra is not supported as a visibility store, so Elasticsearch or an SQL store must be enabled.
 
 Below is an example of an environment installed in this configuration:
 
@@ -84,7 +85,7 @@ To install Temporal with all of its dependencies run this command:
 helm install temporaltest . --timeout 900s
 ```
 
-To use your own instance of ElasticSearch, MySQL, PostgreSQL, or Cassandra, please read the "Bring Your Own" sections below.
+To use your own instance of Elasticsearch, MySQL, PostgreSQL, or Cassandra, please read the "Bring Your Own" sections below.
 
 Other components (Prometheus, Grafana) can be omitted from the installation by setting their corresponding `enable` flag to `false`:
 
@@ -107,9 +108,9 @@ Example:
 helm install -f values/values.cloudsqlproxy.yaml temporaltest . --timeout 900s
 ```
 
-### Install with your own ElasticSearch
+### Install with your own Elasticsearch
 
-You might already be operating an instance of ElasticSearch that you want to use with Temporal.
+You might already be operating an instance of Elasticsearch that you want to use with Temporal.
 
 To do so, fill in the relevant configuration values in `values.elasticsearch.yaml`, and pass the file to 'helm install'.
 
@@ -277,7 +278,6 @@ The example below demonstrates a few things:
 1. How to set values via the command line rather than the environment.
 2. How to configure a database (shows Cassandra, but MySQL works the same way)
 3. How to enable TLS for the database connection.
-4. How to enable Auth for the Web UI
 
 ```bash
 helm install temporaltest \
@@ -416,7 +416,6 @@ Forwarding from [::1]:8080 -> 8080
 
 and navigate to http://127.0.0.1:8080 in your browser.
 
-
 ### Exploring Metrics via Grafana
 
 By default, the full "Batteries Included" configuration comes with a few Grafana dashboards.
@@ -443,6 +442,7 @@ Forwarding from [::1]:8081 -> 3000
 3. Navigate to the forwarded Grafana port in your browser (http://localhost:8081/), login as `admin` (using the password from step 1), and click on the "Home" button (upper left corner) to see available dashboards.
 
 ### Updating Dynamic Configs
+
 By default dynamic config is empty, if you want to override some properties for your cluster, you should:
 1. Create a yaml file with your config (for example dc.yaml).
 2. Populate it with some values under server.dynamicConfig prefix (use the sample provided at `values/values.dynamic_config.yaml` as a starting point)
@@ -466,8 +466,18 @@ You can use helm upgrade with the "--dry-run" option to generate the content for
 
 The dynamic-config ConfigMap is referenced as a mounted volume within the Temporal Containers, so any applied change will be automatically picked up by all pods within a few minutes without the need for pod recycling. See k8S documentation (https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/#mounted-configmaps-are-updated-automatically) for more details on how this works.
 
-### Updating Temporal Web Config
-the config file `server/config.yml` for the temporal web ui is referenced as a mounted volume within the Temporal Web UI Container and can be populated by inserting values in the `web.config` section in the `values.yml` for possible config check (https://github.com/temporalio/web#configuring-authentication-optional)
+### Updating Temporal Web UI Config
+
+The default web UI configuration is shown here (https://docs.temporal.io/references/web-ui-configuration). To override the default config, you need to provide environment variables in `web.additionalEnv` in the `values.yml` file. You can refer to the available environment variables here (https://docs.temporal.io/references/web-ui-environment-variables).
+
+For example, to serve the UI from a subpath:
+
+```
+web:
+  additionalEnv:
+    - name: TEMPORAL_UI_PUBLIC_PATH
+      value: /custom-path
+```
 
 ## Uninstalling
 
@@ -493,8 +503,8 @@ Here are examples of commands you can use to upgrade the "default" schema in you
 
 Upgrade default schema:
 
-```
-temporal_v1.2.1 $ temporal-cassandra-tool \
+```bash
+temporal-cassandra-tool \
    --tls \
    --tls-ca-file ... \
    --user cassandra-user \
@@ -527,17 +537,20 @@ helm \
     --set server.config.persistence.default.cassandra.tls.enabled=true \
     --set server.config.persistence.default.cassandra.replicationFactor=3 \
     --set server.config.persistence.default.cassandra.keyspace=temporal \
-    --set server.image.tag=1.2.1 \
+    --set server.image.tag=1.24.1 \
     --set server.image.repository=temporalio/server \
-    --set admintools.image.tag=1.2.1 \
+    --set admintools.image.tag=1.24.1-tctl-1.18.1-cli-0.12.0 \
     --set admintools.image.repository=temporalio/admin-tools \
-    --set web.image.tag=1.1.1 \
+    --set web.image.tag=2.27.2 \
     --set web.image.repository=temporalio/web \
     . \
     --wait \
     --timeout 15m
 ```
 
+# Contributing
+
+Please see our [CONTRIBUTING guide](CONTRIBUTING.md).
 
 # Acknowledgements
 
