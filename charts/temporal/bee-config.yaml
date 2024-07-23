@@ -69,10 +69,14 @@ elasticsearch:
   enabled: false
 
 schema:
+  createDatabase:
+    enabled: false
   setup:
     enabled: false
+    backoffLimit: 100
   update:
-    enabled: false
+    enabled: true
+    backoffLimit: 100
 
 web:
   service:
@@ -93,7 +97,3 @@ web:
   additionalEnv:
     - name: TEMPORAL_CSRF_COOKIE_INSECURE
       value: 'true'
-
-admintools:
-  image:
-    tag: 1.23.0
