@@ -75,7 +75,7 @@ schema:
     enabled: false
     backoffLimit: 100
   update:
-    enabled: true
+    enabled: false
     backoffLimit: 100
 
 web:
