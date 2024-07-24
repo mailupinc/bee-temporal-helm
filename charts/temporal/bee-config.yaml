@@ -63,6 +63,8 @@ elasticsearch:
   logLevel: "error"
   username: TEMPORAL_ES_MASTER_USERNAME # will be injected from env
   password: TEMPORAL_ES_MASTER_PASSWORD # will be injected from env
+  visibilityIndex: "temporal_visibility_v1"
+
 
 schema:
   createDatabase:
