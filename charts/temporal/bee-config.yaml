@@ -52,6 +52,10 @@ prometheus:
       enabled: false
   nodeExporter:
     enabled: false
+  alertmanager:
+    enabled: false
+  prometheus-pushgateway:
+    enabled: false
 
 grafana:
   enabled: false
