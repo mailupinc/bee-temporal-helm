@@ -50,6 +50,8 @@ prometheus:
     storagePath: "/prometheus"
     persistentVolume:
       enabled: false
+  nodeExporter:
+    enabled: false
 
 grafana:
   enabled: false
