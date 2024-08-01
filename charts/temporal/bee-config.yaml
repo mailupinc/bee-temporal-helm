@@ -50,22 +50,23 @@ prometheus:
     storagePath: "/prometheus"
     persistentVolume:
       enabled: false
+    ingress:
+      enabled: true
+      hosts:
+        - "/"
+        - _PROMETHEUS_DNS_DOMAIN_ # will be injected from env
+      annotations:
+        kubernetes.io/ingress.class: "alb"
+        alb.ingress.kubernetes.io/target-type: ip
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+        alb.ingress.kubernetes.io/subnets: _SUBNETS_ # will be injected from env subnet-04ab65750c4461660, subnet-06572f16ee4eddb44
   prometheus-node-exporter:
     enabled: false
   alertmanager:
     enabled: false
   prometheus-pushgateway:
     enabled: false
-  ingress:
-    enabled: true
-    hosts:
-      - "/"
-      - _PROMETHEUS_DNS_DOMAIN_ # will be injected from env
-    annotations:
-      kubernetes.io/ingress.class: "alb"
-      alb.ingress.kubernetes.io/target-type: ip
-      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
-      alb.ingress.kubernetes.io/subnets: _SUBNETS_ # will be injected from env subnet-04ab65750c4461660, subnet-06572f16ee4eddb44
+  
 
 grafana:
   enabled: false
