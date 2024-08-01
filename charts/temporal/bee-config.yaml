@@ -50,7 +50,7 @@ prometheus:
     storagePath: "/prometheus"
     persistentVolume:
       enabled: false
-  nodeExporter:
+  prometheus-node-exporter:
     enabled: false
   alertmanager:
     enabled: false
