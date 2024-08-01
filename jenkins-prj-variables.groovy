@@ -26,7 +26,7 @@ def get_variables_for_env(current_env){
         nlb_name = "qa-bee-temporal-frontend"
         frontend_dns_domain = "qa-bee-temporal.getbee.io"
         web_dns_domain = "qa-bee-temporal-web.getbee.io"
-        pro
+        prometheus_dns_domain = "qa-bee-temporal-prometheus.getbee.io"
 
     } else if ( current_env == "pro" ) {
         eks_cluster = "bee-temporal"
