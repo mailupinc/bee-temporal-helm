@@ -16,6 +16,7 @@ def get_variables_for_env(current_env){
         nlb_name = "pre-bee-temporal-frontend"
         frontend_dns_domain = "pre-bee-temporal.getbee.info"
         web_dns_domain = "pre-bee-temporal-web.getbee.info"
+        prometheus_dns_domain = "pre-bee-temporal-prometheus.getbee.info"
 
 
     } else if ( current_env == "qa" ) {
@@ -25,6 +26,7 @@ def get_variables_for_env(current_env){
         nlb_name = "qa-bee-temporal-frontend"
         frontend_dns_domain = "qa-bee-temporal.getbee.io"
         web_dns_domain = "qa-bee-temporal-web.getbee.io"
+        pro
 
     } else if ( current_env == "pro" ) {
         eks_cluster = "bee-temporal"
@@ -34,7 +36,7 @@ def get_variables_for_env(current_env){
         nlb_name = "pro-bee-temporal-frontend"
         frontend_dns_domain = "bee-temporal.getbee.io"
         web_dns_domain = "bee-temporal-web.getbee.io"
-
+        prometheus_dns_domain = "bee-temporal-prometheus.getbee.io"
     } else {
         error("Invalid env (${current_env})")
     }
@@ -53,6 +55,7 @@ def get_variables_for_env(current_env){
         nlb_name: nlb_name,
         frontend_dns_domain: frontend_dns_domain,
         web_dns_domain: web_dns_domain,
+        prometheus_dns_domain: prometheus_dns_domain,
         slack_enabled: true,
         slack_prj_emoji: ':temporalio:'
     ]
