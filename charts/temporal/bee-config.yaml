@@ -45,7 +45,11 @@ postgresql:
   enabled: true
 
 prometheus:
-  enabled: false
+  enabled: true
+  server:
+    storagePath: "/prometheus"
+    persistentVolume:
+      enabled: false
 
 grafana:
   enabled: false
