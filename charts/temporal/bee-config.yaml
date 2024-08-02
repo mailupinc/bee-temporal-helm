@@ -50,6 +50,13 @@ prometheus:
     storagePath: "/prometheus"
     persistentVolume:
       enabled: false
+    resources:
+      limits:
+        cpu: "1500m"
+        memory: "1536M"
+      requests:
+        cpu: "1000m"
+        memory: "1024M"
     ingress:
       enabled: true
       hosts:
@@ -66,7 +73,7 @@ prometheus:
     enabled: false
   prometheus-pushgateway:
     enabled: false
-  
+
 
 grafana:
   enabled: false
