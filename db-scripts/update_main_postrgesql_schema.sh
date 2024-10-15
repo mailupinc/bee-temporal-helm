@@ -28,20 +28,24 @@ export SQL_USER=$TEMPORAL_DEFAULT_DB_USER
 export SQL_PASSWORD=$TEMPORAL_DEFAULT_DB_PASSWORD
 export SQL_DATABASE=temporal 
 
-TEMPORAL_REPO_DIR="/Users/pomoni/bee/temporal" # Absolute Path to the temporal repo, change it to your repo path
-
-# Change to the directory specified by TEMPORAL_REPO_DIR
-cd "$TEMPORAL_REPO_DIR" || { echo "Failed to change directory to $TEMPORAL_REPO_DIR"; exit 1; }
-TEMPORAL_SQL_TOOL="./temporal-sql-tool"
-
-if [ -x "$TEMPORAL_SQL_TOOL" ]; then
-    echo "Temporal SQL Tool found"
-    echo "Updating main postgresql schema"
-    "$TEMPORAL_SQL_TOOL" --tls --tls-disable-host-verification update -schema-dir schema/postgresql/v12/temporal/versioned
-    echo "Main postgresql schema updated"
-else
-    echo ''
-    echo "Temporal SQL Tool not found at $TEMPORAL_REPO_DIR please set the path the temporal repo, and build the tool with 'make temporal-sql-tool'"
-    echo ''
+# If TEMPORAL_REPO_HOME is defined in the environment file, use it, otherwise use the default value, which suppose that the temporal repo is in the same directory as the project
+if [ -z "$TEMPORAL_REPO_HOME" ]; then
+    TEMPORAL_REPO_HOME="$PRJ_DIR/../temporal" 
 fi
 
+{
+    # Change to the directory specified by TEMPORAL_REPO_DIR
+    cd "$TEMPORAL_REPO_HOME" || { echo "Failed to change directory to $TEMPORAL_REPO_HOME"; exit 1; }
+    TEMPORAL_SQL_TOOL="./temporal-sql-tool"
+
+    if [ -x "$TEMPORAL_SQL_TOOL" ]; then
+        echo "Temporal SQL Tool found"
+        echo "Updating main postgresql schema"
+        "$TEMPORAL_SQL_TOOL" --tls --tls-disable-host-verification update -schema-dir schema/postgresql/v12/temporal/versioned
+        echo "Main postgresql schema updated"
+    else
+        echo ''
+        echo "Temporal SQL Tool not found at $TEMPORAL_REPO_HOME please set the path the temporal repo, and build the tool with 'make temporal-sql-tool'"
+        echo ''
+    fi
+}
