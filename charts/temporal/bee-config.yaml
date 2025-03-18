@@ -120,3 +120,5 @@ web:
   additionalEnv:
     - name: TEMPORAL_CSRF_COOKIE_INSECURE
       value: 'true'
+    - name: TEMPORAL_BANNER_TEXT
+      value: _TEMPORAL_BANNER_TEXT_ # will be injected from env
