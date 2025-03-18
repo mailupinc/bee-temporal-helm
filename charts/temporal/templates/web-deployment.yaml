@@ -21,6 +21,10 @@ spec:
       labels:
         {{- include "temporal.resourceLabels" (list $ "web" "pod") | nindent 8 }}
     spec:
+      {{- with .Values.web.additionalInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{ include "temporal.serviceAccount" $ }}
       {{- if .Values.web.additionalVolumes }}
       volumes:
@@ -36,6 +40,15 @@ spec:
           {{- if .Values.web.additionalEnv }}
           {{- toYaml .Values.web.additionalEnv | nindent 12 }}
           {{- end }}
+          {{- if .Values.web.additionalEnvSecretName }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.web.additionalEnvSecretName }}
+          {{- end }}
+          livenessProbe:
+            initialDelaySeconds: 10
+            tcpSocket:
+              port: http
           ports:
             - name: http
               containerPort: 8080
