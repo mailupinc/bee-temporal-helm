@@ -1,5 +1,2 @@
 /Chart.lock
 /.idea
-.env
-.envs/*
-*.tgz
