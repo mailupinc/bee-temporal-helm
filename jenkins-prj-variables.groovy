@@ -17,6 +17,8 @@ def get_variables_for_env(current_env){
         frontend_dns_domain = "pre-bee-temporal.getbee.info"
         web_dns_domain = "pre-bee-temporal-web.getbee.info"
         prometheus_dns_domain = "pre-bee-temporal-prometheus.getbee.info"
+        cpu_request = "512m"
+        memory_request = "1Gi"
 
 
     } else if ( current_env == "qa" ) {
@@ -27,6 +29,8 @@ def get_variables_for_env(current_env){
         frontend_dns_domain = "qa-bee-temporal.getbee.io"
         web_dns_domain = "qa-bee-temporal-web.getbee.io"
         prometheus_dns_domain = "qa-bee-temporal-prometheus.getbee.io"
+        cpu_request = "512m"
+        memory_request = "1Gi"
 
     } else if ( current_env == "pro" ) {
         eks_cluster = "bee-temporal"
@@ -37,6 +41,8 @@ def get_variables_for_env(current_env){
         frontend_dns_domain = "bee-temporal.getbee.io"
         web_dns_domain = "bee-temporal-web.getbee.io"
         prometheus_dns_domain = "bee-temporal-prometheus.getbee.io"
+        cpu_request = "1"
+        memory_request = "2Gi"
     } else {
         error("Invalid env (${current_env})")
     }
