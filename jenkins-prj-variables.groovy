@@ -62,6 +62,8 @@ def get_variables_for_env(current_env){
         frontend_dns_domain: frontend_dns_domain,
         web_dns_domain: web_dns_domain,
         prometheus_dns_domain: prometheus_dns_domain,
+        cpu_request: cpu_request,
+        memory_request: memory_request,
         slack_enabled: true,
         slack_prj_emoji: ':temporalio:'
     ]
