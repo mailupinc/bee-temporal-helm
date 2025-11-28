@@ -19,6 +19,8 @@ def get_variables_for_env(current_env){
         prometheus_dns_domain = "pre-bee-temporal-prometheus.getbee.info"
         cpu_request = "512m"
         memory_request = "1Gi"
+        cpu_limit = "1"
+        memory_limit = "2Gi"
 
 
     } else if ( current_env == "qa" ) {
@@ -31,6 +33,8 @@ def get_variables_for_env(current_env){
         prometheus_dns_domain = "qa-bee-temporal-prometheus.getbee.io"
         cpu_request = "512m"
         memory_request = "1Gi"
+        cpu_limit = "1"
+        memory_limit = "2Gi"
 
     } else if ( current_env == "pro" ) {
         eks_cluster = "bee-temporal"
@@ -43,6 +47,8 @@ def get_variables_for_env(current_env){
         prometheus_dns_domain = "bee-temporal-prometheus.getbee.io"
         cpu_request = "1"
         memory_request = "2Gi"
+        cpu_limit = "2"
+        memory_limit = "4Gi"
     } else {
         error("Invalid env (${current_env})")
     }
@@ -64,6 +70,8 @@ def get_variables_for_env(current_env){
         prometheus_dns_domain: prometheus_dns_domain,
         cpu_request: cpu_request,
         memory_request: memory_request,
+        cpu_limit: cpu_limit,
+        memory_limit: memory_limit,
         slack_enabled: true,
         slack_prj_emoji: ':temporalio:'
     ]
