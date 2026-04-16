@@ -9,8 +9,8 @@ server:
             createDatabase: false
             manageSchema: false
             pluginName: postgres12
-            host: DEFAULT_DB_HOST # will be injected from env
-            port: 5432
+            connectAddr: DEFAULT_DB_HOST:5432 # will be injected from env
+            connectProtocol: tcp
             databaseName: temporal
             user: DEFAULT_DB_USER # will be injected from env
             password: DEFAULT_DB_PASSWORD # will be injected from env
