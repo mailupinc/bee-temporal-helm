@@ -213,10 +213,10 @@ extraObjects:
     spec:
       ingressClassName: alb
       rules:
-        - host: {{ index .Values.embeddedPrometheus.server.ingress.hosts 1 | quote }}
+        - host: {{ index .Values.embeddedPrometheus.server.ingress.hosts 1 | trim | quote }}
           http:
             paths:
-              - path: {{ index .Values.embeddedPrometheus.server.ingress.hosts 0 | quote }}
+              - path: {{ index .Values.embeddedPrometheus.server.ingress.hosts 0 | trim | quote }}
                 pathType: Prefix
                 backend:
                   service:
