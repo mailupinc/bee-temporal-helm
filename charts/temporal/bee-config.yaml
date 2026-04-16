@@ -1,23 +1,35 @@
 server:
   config:
     persistence:
-      default:
-        driver: "sql"
-
-        sql:
-          driver: "postgres12"
-          host: DEFAULT_DB_HOST # will be injected from env
-          port: 5432
-          database: temporal
-          user: DEFAULT_DB_USER # will be injected from env
-          password: DEFAULT_DB_PASSWORD # will be injected from env
-          maxConns: 20
-          maxConnLifetime: "1h"
-          tls:
-            enabled: true
-
-      visibility:
-        driver: "elasticsearch"
+      defaultStore: default
+      visibilityStore: visibility
+      datastores:
+        default:
+          sql:
+            createDatabase: false
+            manageSchema: false
+            pluginName: postgres12
+            host: DEFAULT_DB_HOST # will be injected from env
+            port: 5432
+            databaseName: temporal
+            user: DEFAULT_DB_USER # will be injected from env
+            password: DEFAULT_DB_PASSWORD # will be injected from env
+            maxConns: 20
+            maxConnLifetime: "1h"
+            tls:
+              enabled: true
+        visibility:
+          elasticsearch:
+            manageSchema: false
+            version: v7
+            url:
+              scheme: https
+              host: TEMPORAL_ES_HOSTS # will be injected from env
+            username: TEMPORAL_ES_MASTER_USERNAME # will be injected from env
+            password: TEMPORAL_ES_MASTER_PASSWORD # will be injected from env
+            logLevel: error
+            indices:
+              visibility: temporal_visibility_v1
 
   frontend:
     service:
@@ -34,72 +46,6 @@ server:
         external-dns.alpha.kubernetes.io/hostname: _FRONTEND_DNS_DOMAIN_ # will be injected from env
 
   replicaCount: 2
-
-cassandra:
-  enabled: false
-
-mysql:
-  enabled: false
-
-postgresql:
-  enabled: true
-
-prometheus:
-  enabled: true
-  server:
-    storagePath: "/prometheus"
-    persistentVolume:
-      enabled: false
-    resources:
-      limits:
-        cpu: "1500m"
-        memory: "1536M"
-      requests:
-        cpu: "1000m"
-        memory: "1024M"
-    ingress:
-      enabled: true
-      hosts:
-        - "/"
-        - _PROMETHEUS_DNS_DOMAIN_ # will be injected from env
-      annotations:
-        kubernetes.io/ingress.class: "alb"
-        alb.ingress.kubernetes.io/target-type: ip
-        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
-        alb.ingress.kubernetes.io/subnets: _SUBNETS_ # will be injected from env subnet-04ab65750c4461660, subnet-06572f16ee4eddb44
-  prometheus-node-exporter:
-    enabled: false
-  alertmanager:
-    enabled: false
-  prometheus-pushgateway:
-    enabled: false
-
-
-grafana:
-  enabled: false
-
-elasticsearch:
-  enabled: false
-  external: true
-  host: TEMPORAL_ES_HOSTS # will be injected from env
-  scheme: https
-  port: 443
-  version: "v7"
-  logLevel: "error"
-  username: TEMPORAL_ES_MASTER_USERNAME # will be injected from env
-  password: TEMPORAL_ES_MASTER_PASSWORD # will be injected from env
-  visibilityIndex: "temporal_visibility_v1"
-
-
-schema:
-  createDatabase:
-    enabled: false
-  setup:
-    enabled: false
-    backoffLimit: 100
-  update:
-    enabled: false
-    backoffLimit: 100
 
 web:
   service:
