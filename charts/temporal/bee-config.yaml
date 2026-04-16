@@ -69,6 +69,25 @@ web:
     - name: TEMPORAL_BANNER_TEXT
       value: _TEMPORAL_BANNER_TEXT_ # will be injected from env
 
+embeddedPrometheus:
+  server:
+    resources:
+      limits:
+        cpu: "1500m"
+        memory: "1536Mi"
+      requests:
+        cpu: "1000m"
+        memory: "1024Mi"
+    ingress:
+      hosts:
+        - "/"
+        - _PROMETHEUS_DNS_DOMAIN_ # will be injected from env
+      annotations:
+        kubernetes.io/ingress.class: "alb"
+        alb.ingress.kubernetes.io/target-type: ip
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+        alb.ingress.kubernetes.io/subnets: _SUBNETS_ # will be injected from env subnet-04ab65750c4461660, subnet-06572f16ee4eddb44
+
 extraObjects:
   - |
     apiVersion: v1
@@ -143,12 +162,7 @@ extraObjects:
                 - name: http
                   containerPort: 9090
               resources:
-                limits:
-                  cpu: "1500m"
-                  memory: "1536Mi"
-                requests:
-                  cpu: "1000m"
-                  memory: "1024Mi"
+                {{- toYaml .Values.embeddedPrometheus.server.resources | nindent 16 }}
               volumeMounts:
                 - name: config
                   mountPath: /etc/prometheus
@@ -190,17 +204,14 @@ extraObjects:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: prometheus
       annotations:
-        kubernetes.io/ingress.class: "alb"
-        alb.ingress.kubernetes.io/target-type: ip
-        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
-        alb.ingress.kubernetes.io/subnets: _SUBNETS_ # will be injected from env subnet-04ab65750c4461660, subnet-06572f16ee4eddb44
+        {{- toYaml .Values.embeddedPrometheus.server.ingress.annotations | nindent 8 }}
     spec:
       ingressClassName: alb
       rules:
-        - host: _PROMETHEUS_DNS_DOMAIN_ # will be injected from env
+        - host: {{ index .Values.embeddedPrometheus.server.ingress.hosts 1 | quote }}
           http:
             paths:
-              - path: /
+              - path: {{ index .Values.embeddedPrometheus.server.ingress.hosts 0 | quote }}
                 pathType: Prefix
                 backend:
                   service:
