@@ -16,6 +16,7 @@ def get_variables_for_env(current_env){
         nlb_name = "pre-bee-temporal-frontend"
         frontend_dns_domain = "pre-bee-temporal.getbee.info"
         web_dns_domain = "pre-bee-temporal-web.getbee.info"
+        ssl_certificate_arn = "arn:aws:acm:eu-west-1:118072093402:certificate/2beec534-497c-4962-af83-37e8bf9cdb51"
         prometheus_dns_domain = "pre-bee-temporal-prometheus.getbee.info"
         cpu_request = "512m"
         memory_request = "1Gi"
