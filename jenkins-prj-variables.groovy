@@ -74,6 +74,7 @@ def get_variables_for_env(current_env){
         cpu_limit: cpu_limit,
         memory_limit: memory_limit,
         slack_enabled: true,
+        ssl_certificate_arn: ssl_certificate_arn,
         slack_prj_emoji: ':temporalio:'
     ]
 
