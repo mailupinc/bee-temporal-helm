@@ -164,7 +164,7 @@ extraObjects:
               resources:
                 limits:
                   cpu: {{ default "1500m" .Values.embeddedPrometheus.server.resources.limits.cpu | quote }}
-                  memory: {{ default "1536Mi" .Values.embeddedPrometheus.server.resources.limits.memory | quote }}
+                  memory: {{ default "4096Mi" .Values.embeddedPrometheus.server.resources.limits.memory | quote }}
                 requests:
                   cpu: {{ default "1000m" .Values.embeddedPrometheus.server.resources.requests.cpu | quote }}
                   memory: {{ default "1024Mi" .Values.embeddedPrometheus.server.resources.requests.memory | quote }}
