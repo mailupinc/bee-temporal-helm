@@ -5,16 +5,22 @@
 {{- range $service := (list "frontend" "internal-frontend" "history" "matching" "worker") }}
 {{- $serviceValues := index $.Values.server $service }}
 {{- if $serviceValues.enabled }}
+{{- $image := merge (deepCopy ($serviceValues.image | default dict)) $.Values.server.image }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ include "temporal.kubernetesNamespace" $ }}
   name: {{ include "temporal.componentname" (list $ $service) }}
   annotations:
     {{- include "temporal.resourceAnnotations" (list $ $service "deployment") | nindent 4 }}
   labels:
     {{- include "temporal.resourceLabels" (list $ $service "deployment") | nindent 4 }}
 spec:
-  replicas: {{ default $.Values.server.replicaCount $serviceValues.replicaCount }}
+  {{- if $serviceValues.replicaCount }}
+  replicas: {{ $serviceValues.replicaCount }}
+  {{- else if $.Values.server.replicaCount }}
+  replicas: {{ $.Values.server.replicaCount }}
+  {{- end }}
   {{- with (default $.Values.server.deploymentStrategy $serviceValues.deploymentStrategy) }}
   strategy:
   {{- toYaml . | nindent 4 }}
@@ -41,7 +47,7 @@ spec:
       labels:
         {{- include "temporal.resourceLabels" (list $ $service "pod") | nindent 8 }}
     spec:
-      {{ include "temporal.serviceAccount" $ }}
+      {{ include "temporal.componentServiceAccount" (list $ $service) }}
       {{- with $.Values.server.securityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -52,8 +58,8 @@ spec:
       {{- end }}
       containers:
         - name: {{ $.Chart.Name }}-{{ $service }}
-          image: "{{ $.Values.server.image.repository }}:{{ $.Values.server.image.tag }}"
-          imagePullPolicy: {{ $.Values.server.image.pullPolicy }}
+          image: "{{ $image.repository }}:{{ $image.tag }}"
+          imagePullPolicy: {{ $image.pullPolicy }}
           env:
             - name: POD_IP
               valueFrom:
@@ -65,11 +71,15 @@ spec:
               value: {{ $service }}
             - name: TEMPORAL_SERVER_CONFIG_FILE_PATH
               value: /etc/temporal/config/config_template.yaml
+          {{- if not (and (eq $defaultStore.driver "sql") $defaultStore.config.passwordCommand) }}
             - name: TEMPORAL_DEFAULT_STORE_PASSWORD
               {{- include "temporal.password-env" (list $ $defaultStore) | nindent 14 }}
+          {{- end }}
+          {{- if not (and (eq $visibilityStore.driver "sql") $visibilityStore.config.passwordCommand) }}
             - name: TEMPORAL_VISIBILITY_STORE_PASSWORD
               {{- include "temporal.password-env" (list $ $visibilityStore) | nindent 14 }}
-          {{- if $secondaryVisibilityStore }}
+          {{- end }}
+          {{- if and $secondaryVisibilityStore (not (and (eq $secondaryVisibilityStore.driver "sql") $secondaryVisibilityStore.config.passwordCommand)) }}
             - name: TEMPORAL_SECONDARY_VISIBILITY_STORE_PASSWORD
               {{- include "temporal.password-env" (list $ $secondaryVisibilityStore) | nindent 14 }}
           {{- end }}
@@ -114,15 +124,25 @@ spec:
             - name: metrics
               containerPort: 9090
               protocol: TCP
-          {{- if ne $service "worker" }}
+          {{- $resolvedLiveness := default $.Values.server.livenessProbe $serviceValues.livenessProbe }}
+          {{- if $resolvedLiveness }}
+          livenessProbe:
+          {{- toYaml $resolvedLiveness | nindent 12 }}
+          {{- else if ne $service "worker" }}
           livenessProbe:
             initialDelaySeconds: 150
             tcpSocket:
               port: rpc
           {{- end }}
-          {{- with default $.Values.server.readinessProbe $serviceValues.readinessProbe }}
+          {{- /* Default to tcpSocket (works with TLS); users may override per-service via server.<svc>.readinessProbe. */ -}}
+          {{- $resolvedProbe := default $.Values.server.readinessProbe $serviceValues.readinessProbe }}
+          {{- if $resolvedProbe }}
           readinessProbe:
-          {{- toYaml . | nindent 12 }}
+          {{- toYaml $resolvedProbe | nindent 12 }}
+          {{- else if ne $service "worker" }}
+          readinessProbe:
+            tcpSocket:
+              port: rpc
           {{- end }}
           volumeMounts:
             - name: config
@@ -137,6 +157,9 @@ spec:
             {{- end }}
             {{- if $.Values.server.additionalVolumeMounts }}
             {{- toYaml $.Values.server.additionalVolumeMounts | nindent 12}}
+            {{- end }}
+            {{- if or $.Values.server.tls.internode.enabled $.Values.server.tls.frontend.enabled }}
+            {{- include "temporal.server.tls.volumeMounts" $ | nindent 12 }}
             {{- end }}
           resources:
             {{- toYaml (default $.Values.server.resources $serviceValues.resources) | nindent 12 }}
@@ -167,6 +190,9 @@ spec:
         {{- if $.Values.server.additionalVolumes }}
         {{- toYaml $.Values.server.additionalVolumes | nindent 8}}
         {{- end }}
+        {{- if or $.Values.server.tls.internode.enabled $.Values.server.tls.frontend.enabled }}
+        {{- include "temporal.server.tls.volumes" $ | nindent 8 }}
+        {{- end }}
       {{- with (default $.Values.server.nodeSelector $serviceValues.nodeSelector) }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -182,6 +208,15 @@ spec:
     {{- with $serviceValues.topologySpreadConstraints }}
       topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with (default $.Values.server.schedulerName $serviceValues.schedulerName) }}
+      schedulerName: {{ . }}
+    {{- end }}
+    {{- with (default $.Values.server.runtimeClassName $serviceValues.runtimeClassName) }}
+      runtimeClassName: {{ . }}
+    {{- end }}
+    {{- with (default $.Values.server.priorityClassName $serviceValues.priorityClassName) }}
+      priorityClassName: {{ . }}
     {{- end }}
       terminationGracePeriodSeconds: {{ default $.Values.server.terminationGracePeriodSeconds $serviceValues.terminationGracePeriodSeconds }}
 ---

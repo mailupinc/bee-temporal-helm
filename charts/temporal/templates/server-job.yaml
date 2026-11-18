@@ -1,7 +1,8 @@
-{{- $jobName := include "temporal.componentname" (list $ (printf "schema-%s-%d" $.Chart.Version $.Release.Revision | replace "." "-")) }}
+{{- $jobName := ternary (printf "%s-schema" (include "temporal.fullname" $)) (include "temporal.componentname" (list $ (printf "schema-%s-%d" $.Chart.Version $.Release.Revision | replace "." "-" | replace "+" "-"))) $.Values.schema.useHelmHooks }}
 apiVersion: batch/v1
 kind: Job
 metadata:
+  namespace: {{ include "temporal.kubernetesNamespace" $ }}
   name: {{ $jobName }}
   labels:
     {{- include "temporal.resourceLabels" (list $ "database" "") | nindent 4 }}
@@ -10,7 +11,7 @@ metadata:
     {{- if $.Values.schema.useHelmHooks }}
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "0"
-    "helm.sh/hook-delete-policy": before-hook-creation
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
     {{- end }}
     {{- with $.Values.schema.jobAnnotations }}
     {{- toYaml . | nindent 4 }}
@@ -18,6 +19,7 @@ metadata:
   {{- end }}
 spec:
   backoffLimit: {{ $.Values.schema.backoffLimit }}
+  activeDeadlineSeconds: {{ $.Values.schema.activeDeadlineSeconds }}
   ttlSecondsAfterFinished: {{ $.Values.schema.ttlSecondsAfterFinished }}
   template:
     metadata:
@@ -32,7 +34,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
-      {{ include "temporal.serviceAccount" $ }}
+      {{ include "temporal.componentServiceAccount" (list $ "schema") }}
       restartPolicy: OnFailure
       initContainers:
         {{- with $.Values.admintools.additionalInitContainers }}
@@ -46,7 +48,7 @@ spec:
             {{- if eq $store.driver "cassandra" }}
           command: ['temporal-cassandra-tool', 'create', '-k', '{{ $store.config.keyspace }}', '--replication-factor', '{{ $store.config.replicationFactor | default 1 }}'{{- if $store.config.datacenter }}, '--datacenter', '{{ $store.config.datacenter }}'{{- end }}]
             {{- else if eq $store.driver "sql" }}
-          command: ['temporal-sql-tool', 'create-database']
+          command: ['temporal-sql-tool', 'create-database'{{- with $store.config.defaultDb }}, '--defaultdb', {{ . | quote }}{{- end }}]
             {{- else -}}
               {{- fail (printf "createDatabase is not supported for %s store" $store.driver) -}}
             {{- end }}
@@ -97,7 +99,7 @@ spec:
                 {{- fail (printf "manageSchema is not supported for %s SQL database plugin" $store.config.pluginName) -}}
               {{- end }}
             {{- else if eq $store.driver "elasticsearch" }}
-            - temporal-elasticsearch-tool setup-schema && temporal-elasticsearch-tool create-index && temporal-elasticsearch-tool update-schema --index "$ES_VISIBILITY_INDEX"
+            - temporal-elasticsearch-tool update-schema --index "" && temporal-elasticsearch-tool create-index && temporal-elasticsearch-tool update-schema --index "$ES_VISIBILITY_INDEX"
             {{- end }}
           env:
             {{- include "temporal.admintools-env" (list $ $store) | nindent 12 }}

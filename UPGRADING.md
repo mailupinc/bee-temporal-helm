@@ -52,6 +52,7 @@ server:
             driverName: mysql8
             databaseName: temporal
             connectAddr: "mysql.example.com:3306"
+            connectProtocol: tcp
             user: temporal_user
             existingSecret: temporal-db-secret
             secretKey: password
@@ -63,6 +64,7 @@ server:
             driverName: mysql8
             databaseName: temporal_visibility
             connectAddr: "mysql.example.com:3306"
+            connectProtocol: tcp
             user: temporal_user
             existingSecret: temporal-db-secret
             secretKey: password
@@ -253,14 +255,14 @@ admintools:
 ```
 
 #### Disable Shims
-- `shims.dockerize` - Enable compatibility with Temporal 1.29 images (default: `true`). Set to `false` if using Temporal 1.30 or higher.
-- `shims.elasticsearchTool` - Enable compatibility with Temporal 1.29 images (default: `true`). Set to `false` if using Temporal 1.30 or higher.
+- `shims.dockerize` - Enable compatibility with Temporal < 1.30 images (default: `true`). Set to `false` if using Temporal 1.29 or lower.
+- `shims.elasticsearchTool` - Enable compatibility with Temporal < 1.30 images (default: `true`). Set to `false` if using Temporal 1.29 or lower.
 
 **Example:**
 ```yaml
 shims:
-  dockerize: false  # Disable if using Temporal 1.30+
-  elasticsearchTool: false  # Disable if using Temporal 1.30+
+  dockerize: true  # Enable if using Temporal < 1.30
+  elasticsearchTool: true  # Enable if using Temporal < 1.30
 ```
 
 #### Schema Job Annotations
@@ -382,8 +384,6 @@ If you encounter issues during migration:
 
 ## Notes
 
-- This is a **release candidate** version. Test thoroughly before using in production.
-- The chart version must be specified while the chart is still an rc: `--version '>=1.0.0-0'`
 - Data migration is your responsibility when moving from bundled databases to external ones
 - Some configuration options may have changed - review all settings carefully
 

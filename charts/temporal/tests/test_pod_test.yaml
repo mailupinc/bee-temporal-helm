@@ -60,3 +60,119 @@ tests:
       - equal:
           path: spec.imagePullSecrets[0].name
           value: my-registry-secret
+  - it: does not set custom pod labels by default
+    asserts:
+      - notExists:
+          path: metadata.labels.team
+  - it: includes custom pod labels when specified
+    set:
+      test:
+        podLabels:
+          team: platform
+          env: prod
+    asserts:
+      - equal:
+          path: metadata.labels.team
+          value: platform
+      - equal:
+          path: metadata.labels.env
+          value: prod
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: test
+  - it: does not set nodeSelector by default
+    asserts:
+      - notExists:
+          path: spec.nodeSelector
+  - it: sets nodeSelector when specified
+    set:
+      test:
+        nodeSelector:
+          workload: temporal
+    asserts:
+      - equal:
+          path: spec.nodeSelector.workload
+          value: temporal
+  - it: does not set tolerations by default
+    asserts:
+      - notExists:
+          path: spec.tolerations
+  - it: sets tolerations when specified
+    set:
+      test:
+        tolerations:
+          - key: dedicated
+            operator: Equal
+            value: temporal
+            effect: NoSchedule
+    asserts:
+      - equal:
+          path: spec.tolerations[0].key
+          value: dedicated
+      - equal:
+          path: spec.tolerations[0].effect
+          value: NoSchedule
+  - it: does not set affinity by default
+    asserts:
+      - notExists:
+          path: spec.affinity
+  - it: sets affinity when specified
+    set:
+      test:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: kubernetes.io/arch
+                      operator: In
+                      values: [amd64]
+    asserts:
+      - equal:
+          path: spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key
+          value: kubernetes.io/arch
+
+  - it: uses global service account by default
+    set:
+      serviceAccount:
+        create: true
+    asserts:
+      - equal:
+          path: spec.serviceAccountName
+          value: RELEASE-NAME-temporal
+  - it: uses default service account when serviceAccount.create is false
+    asserts:
+      - equal:
+          path: spec.serviceAccountName
+          value: default
+  - it: uses per-service SA for test when configured
+    set:
+      serviceAccount:
+        create: true
+      test:
+        serviceAccount:
+          create: true
+          name: my-test-sa
+    asserts:
+      - equal:
+          path: spec.serviceAccountName
+          value: my-test-sa
+  - it: uses auto-generated name for test per-service SA
+    set:
+      test:
+        serviceAccount:
+          create: true
+    asserts:
+      - equal:
+          path: spec.serviceAccountName
+          value: RELEASE-NAME-temporal-test
+  - it: falls back to global SA when test serviceAccount is empty
+    set:
+      serviceAccount:
+        create: true
+      test:
+        serviceAccount: {}
+    asserts:
+      - equal:
+          path: spec.serviceAccountName
+          value: RELEASE-NAME-temporal

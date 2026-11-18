@@ -24,6 +24,44 @@ tests:
       - containsDocument:
           kind: Job
           apiVersion: batch/v1
+  - it: uses a fixed job name when useHelmHooks is true
+    release:
+      name: test
+    set:
+      server:
+        config:
+          namespaces:
+            create: true
+            useHelmHooks: true
+            namespace:
+              - name: default
+    asserts:
+      - equal:
+          path: metadata.name
+          value: test-temporal-namespace
+      - equal:
+          path: spec.template.metadata.name
+          value: test-temporal-namespace
+  - it: replaces build metadata separators in the namespace job name when useHelmHooks is false
+    release:
+      name: test
+    chart:
+      version: 1.1.1+build
+    set:
+      server:
+        config:
+          namespaces:
+            create: true
+            useHelmHooks: false
+            namespace:
+              - name: default
+    asserts:
+      - equal:
+          path: metadata.name
+          value: test-temporal-namespace-1-1-1-build-0
+      - equal:
+          path: spec.template.metadata.name
+          value: test-temporal-namespace-1-1-1-build-0
   - it: creates an init container per namespace
     set:
       server:
@@ -37,10 +75,30 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].name
-          value: create-default-namespace
+          value: create-namespace-0
       - equal:
           path: spec.template.spec.initContainers[1].name
-          value: create-my-namespace-namespace
+          value: create-namespace-1
+  - it: accepts namespace names that are not valid Kubernetes container names
+    # Temporal namespace names may contain '_' (and may exceed 63 characters),
+    # but init container names must be RFC 1123 labels. The container name must
+    # not be derived from the namespace name.
+    set:
+      server:
+        config:
+          namespaces:
+            create: true
+            namespace:
+              - name: default
+              - name: dummy_ns
+                retention: 1d
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: create-namespace-1
+      - equal:
+          path: spec.template.spec.initContainers[1].args[0]
+          value: temporal operator namespace describe -n dummy_ns || temporal operator namespace create -n dummy_ns --retention 1d
   - it: sets TEMPORAL_ADDRESS to the frontend service by default
     set:
       server:
@@ -51,9 +109,11 @@ tests:
               - name: default
     asserts:
       - equal:
-          path: spec.template.spec.initContainers[?(@.name=="create-default-namespace")].env[?(@.name=="TEMPORAL_ADDRESS")].value
-          value: RELEASE-NAME-temporal-frontend.NAMESPACE.svc:7233
+          path: spec.template.spec.initContainers[?(@.name=="create-namespace-0")].env[?(@.name=="TEMPORAL_ADDRESS")].value
+          value: RELEASE-NAME-temporal-frontend:7233
   - it: sets TEMPORAL_ADDRESS to the internal-frontend service when enabled
+    # The namespace job is a one-off admin tools invocation, so by default it
+    # targets the internal-frontend when that is enabled.
     set:
       server:
         internal-frontend:
@@ -65,8 +125,24 @@ tests:
               - name: default
     asserts:
       - equal:
-          path: spec.template.spec.initContainers[?(@.name=="create-default-namespace")].env[?(@.name=="TEMPORAL_ADDRESS")].value
-          value: RELEASE-NAME-temporal-internal-frontend.NAMESPACE.svc:7236
+          path: spec.template.spec.initContainers[?(@.name=="create-namespace-0")].env[?(@.name=="TEMPORAL_ADDRESS")].value
+          value: RELEASE-NAME-temporal-internal-frontend:7236
+
+  - it: routes the namespace job to the external frontend when useExternalFrontend is set
+    set:
+      server:
+        internal-frontend:
+          enabled: true
+        config:
+          namespaces:
+            create: true
+            useExternalFrontend: true
+            namespace:
+              - name: default
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[?(@.name=="create-namespace-0")].env[?(@.name=="TEMPORAL_ADDRESS")].value
+          value: RELEASE-NAME-temporal-frontend:7233
   - it: includes additional environment variables
     set:
       server:
@@ -83,20 +159,39 @@ tests:
         additionalEnvConfigMapName: env-configmap
     asserts:
       - equal:
-          path: spec.template.spec.initContainers[?(@.name=="create-default-namespace")].env[?(@.name=="MY_ENV_VAR")].value
+          path: spec.template.spec.initContainers[?(@.name=="create-namespace-0")].env[?(@.name=="MY_ENV_VAR")].value
           value: my-value
       - equal:
-          path: spec.template.spec.initContainers[?(@.name=="create-default-namespace")].envFrom[0].secretRef.name
+          path: spec.template.spec.initContainers[?(@.name=="create-namespace-0")].envFrom[0].secretRef.name
           value: env-secret
       - equal:
-          path: spec.template.spec.initContainers[?(@.name=="create-default-namespace")].envFrom[1].configMapRef.name
+          path: spec.template.spec.initContainers[?(@.name=="create-namespace-0")].envFrom[1].configMapRef.name
           value: env-configmap
-  - it: does not include Helm hook annotations
+  - it: includes Helm hook annotations by default
     set:
       server:
         config:
           namespaces:
             create: true
+            namespace:
+              - name: default
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: post-install,post-upgrade
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "0"
+      - equal:
+          path: metadata.annotations["helm.sh/hook-delete-policy"]
+          value: before-hook-creation,hook-succeeded
+  - it: does not include Helm hook annotations when useHelmHooks is false
+    set:
+      server:
+        config:
+          namespaces:
+            create: true
+            useHelmHooks: false
             namespace:
               - name: default
     asserts:
@@ -174,3 +269,83 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[*].resources.limits.memory
           value: 16Gi
+
+  - it: uses global service account by default
+    set:
+      serviceAccount:
+        create: true
+      server:
+        config:
+          namespaces:
+            create: true
+            namespace:
+              - name: default
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: RELEASE-NAME-temporal
+
+  - it: uses default service account when serviceAccount.create is false
+    set:
+      server:
+        config:
+          namespaces:
+            create: true
+            namespace:
+              - name: default
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: default
+
+  - it: uses per-service SA for schema when configured
+    set:
+      serviceAccount:
+        create: true
+      schema:
+        serviceAccount:
+          create: true
+          name: my-schema-sa
+      server:
+        config:
+          namespaces:
+            create: true
+            namespace:
+              - name: default
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: my-schema-sa
+
+  - it: uses auto-generated name for schema per-service SA
+    set:
+      schema:
+        serviceAccount:
+          create: true
+      server:
+        config:
+          namespaces:
+            create: true
+            namespace:
+              - name: default
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: RELEASE-NAME-temporal-schema
+
+  - it: falls back to global SA when schema serviceAccount is empty
+    set:
+      serviceAccount:
+        create: true
+      schema:
+        serviceAccount: {}
+      server:
+        config:
+          namespaces:
+            create: true
+            namespace:
+              - name: default
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: RELEASE-NAME-temporal

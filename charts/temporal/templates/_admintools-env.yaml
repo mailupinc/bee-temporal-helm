@@ -23,6 +23,12 @@
 - name: CASSANDRA_TLS_DISABLE_HOST_VERIFICATION
   value: {{ not .enableHostVerification | quote }}
     {{- end }}
+    {{- if and .certFile .keyFile }}
+- name: CASSANDRA_TLS_CERT
+  value: {{ .certFile }}
+- name: CASSANDRA_TLS_KEY
+  value: {{ .keyFile }}
+    {{- end }}
   {{- end }}
 {{- else if eq $store.driver "sql" -}}
 - name: SQL_PLUGIN
@@ -35,8 +41,10 @@
   value: {{ required (printf "Please specify databaseName for %s store" $store.name) $store.config.databaseName }}
 - name: SQL_USER
   value: {{ $store.config.user | quote }}
+{{- if not $store.config.passwordCommand }}
 - name: SQL_PASSWORD
   {{- include "temporal.password-env" (list $root $store) | nindent 2 }}
+{{- end }}
   {{- with $store.config.connectAttributes }}
 - name: SQL_CONNECT_ATTRIBUTES
   value: {{ include "temporal.persistence.sql.connectAttributes" . | quote }}

@@ -1,24 +1,46 @@
+{{- /* The health check always connects to the external frontend, so it uses the
+frontend TLS section (empty unless frontend TLS is enabled). */}}
+{{- $tlsSection := include "temporal.adminClient.tls.section" (list . false) }}
 apiVersion: v1
 kind: Pod
 metadata:
+  namespace: {{ include "temporal.kubernetesNamespace" . }}
   name: "{{ include "temporal.fullname" . }}-test-cluster-health"
   labels:
     {{- include "temporal.resourceLabels" (list $ "test" "") | nindent 4 }}
+    {{- with .Values.test.podLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   annotations:
     "helm.sh/hook": test
     {{- with .Values.test.podAnnotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  {{ include "temporal.serviceAccount" . }}
+  {{ include "temporal.componentServiceAccount" (list $ "test") }}
+  {{- with .Values.test.securityContext }}
+  securityContext:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   containers:
   - name: cluster-health
     image: "{{ .Values.admintools.image.repository }}:{{ .Values.admintools.image.tag }}"
     imagePullPolicy: {{ .Values.admintools.image.pullPolicy }}
     command: ["temporal", "operator", "cluster", "health"]
+    {{- with .Values.test.containerSecurityContext }}
+    securityContext:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
     env:
       - name: TEMPORAL_ADDRESS
-        value: {{ include "temporal.fullname" . }}-frontend:{{ .Values.server.frontend.service.port }}
+        value: {{ include "temporal.frontendAddress" . }}
+      {{- if $tlsSection }}
+      {{- include "temporal.adminClient.tls.env" (list . $tlsSection) | nindent 6 }}
+      {{- end }}
+    {{- if $tlsSection }}
+    volumeMounts:
+      {{- include "temporal.adminClient.tls.volumeMounts" (list . $tlsSection) | nindent 6 }}
+    {{- end }}
     {{- with .Values.test.resources }}
     resources:
       {{- toYaml . | nindent 6 }}
@@ -26,5 +48,21 @@ spec:
   {{- with $.Values.imagePullSecrets }}
   imagePullSecrets:
     {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.test.nodeSelector }}
+  nodeSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.test.affinity }}
+  affinity:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.test.tolerations }}
+  tolerations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if $tlsSection }}
+  volumes:
+    {{- include "temporal.adminClient.tls.volumes" (list . $tlsSection) | nindent 4 }}
   {{- end }}
   restartPolicy: Never
